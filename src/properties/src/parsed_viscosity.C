@@ -49,7 +49,7 @@ namespace GRINS
          std::string viscosity_function = input("Materials/Viscosity/mu",std::string("0"));
          this->check_mu_nonzero(viscosity_function);
 
-         mu.reset(new libMesh::ParsedFunction<libMesh::Number>(viscosity_function));
+         _mu.reset(new libMesh::ParsedFunction<libMesh::Number>(viscosity_function));
        }
 
       return;
