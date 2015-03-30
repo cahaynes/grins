@@ -44,6 +44,7 @@ namespace GRINS
   {
   public:
 
+    //! Deprecated constructor
     ParsedViscosity( const GetPot& input );
     ~ParsedViscosity();
     
