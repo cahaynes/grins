@@ -27,7 +27,8 @@
 namespace GRINS
 {
 
-   ParsedViscosity::ParsedViscosity( const GetPot& input )    
+   ParsedViscosity::ParsedViscosity( const GetPot& input )
+     : ViscosityBase()
     {
 
       // Warning about this constructor being deprecated
