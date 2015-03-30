@@ -142,8 +142,10 @@ XFAIL_TESTS += error_ufo_unit.sh
 
 TESTS += viscosity_options_conflict_unit_1.sh
 TESTS += viscosity_options_conflict_unit_2.sh
+TESTS += viscosity_options_conflict_unit_3.sh
 XFAIL_TESTS += viscosity_options_conflict_unit_1.sh
 XFAIL_TESTS += viscosity_options_conflict_unit_2.sh
+XFAIL_TESTS += viscosity_options_conflict_unit_3.sh
 
 TESTS += test_ns_couette_flow_2d_x.sh
 TESTS += test_ns_couette_flow_2d_y.sh
@@ -258,6 +260,7 @@ shellfiles_src += warn_only_ufo_unit.sh
 shellfiles_src += error_ufo_unit.sh
 shellfiles_src += viscosity_options_conflict_unit_1.sh
 shellfiles_src += viscosity_options_conflict_unit_2.sh
+shellfiles_src += viscosity_options_conflict_unit_3.sh
 
 # Want these put with the distro so we can run make check
 EXTRA_DIST = $(shellfiles_src) input_files test_data grids

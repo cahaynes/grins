@@ -427,6 +427,7 @@ AC_CONFIG_FILES(test/error_ufo_unit.sh, [chmod +x test/error_ufo_unit.sh])
 
 AC_CONFIG_FILES(test/viscosity_options_conflict_unit_1.sh, [chmod +x test/viscosity_options_conflict_unit_1.sh])
 AC_CONFIG_FILES(test/viscosity_options_conflict_unit_2.sh, [chmod +x test/viscosity_options_conflict_unit_2.sh])
+AC_CONFIG_FILES(test/viscosity_options_conflict_unit_3.sh, [chmod +x test/viscosity_options_conflict_unit_3.sh])
 
 dnl-----------------------------------------------
 dnl Generate run scripts for examples
