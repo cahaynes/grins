@@ -40,6 +40,7 @@ namespace GRINS
   {
   public:
 
+    //! Deprecated constructor
     ConstantViscosity( const GetPot& input );
     ~ConstantViscosity();
 

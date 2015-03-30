@@ -28,6 +28,7 @@
 
 //GRINS
 #include "grins/grins_physics_names.h"
+#include "grins/common.h"
 
 // libMesh
 #include "libmesh/getpot.h"
@@ -38,6 +39,13 @@ namespace GRINS
   ConstantViscosity::ConstantViscosity( const GetPot& input )
     : _mu( input( "Materials/Viscosity/mu", 1.0 ) )
   {
+    // Warning about this constructor being deprecated
+    {
+      std::string warning = "WARNING: Use of this constructor is DEPRECATED.\n";
+      warning += "         Please update to use constructor with input material name.\n";
+      grins_warning(warning);
+    }
+
     if( !input.have_variable("Materials/Viscosity/mu") )
       {
         libmesh_warning("No Materials/Viscosity/mu specified!\n");
