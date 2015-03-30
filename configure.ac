@@ -425,6 +425,8 @@ AC_CONFIG_FILES(test/input_files/elastic_mooney_rivlin_square_hookean_stiffeners
 AC_CONFIG_FILES(test/warn_only_ufo_unit.sh, [chmod +x test/warn_only_ufo_unit.sh])
 AC_CONFIG_FILES(test/error_ufo_unit.sh, [chmod +x test/error_ufo_unit.sh])
 
+AC_CONFIG_FILES(test/viscosity_options_conflict_unit_1.sh, [chmod +x test/viscosity_options_conflict_unit_1.sh])
+
 dnl-----------------------------------------------
 dnl Generate run scripts for examples
 dnl-----------------------------------------------
