@@ -33,6 +33,9 @@
 // libMesh
 #include "libmesh/getpot.h"
 
+#include "petscvec.h"
+#include "petscmat.h"
+
 namespace GRINS
 {
   PressureContinuationSolver::PressureContinuationSolver( const GetPot& input )
@@ -80,6 +83,9 @@ namespace GRINS
     for( unsigned int s = 0; s < _pressure_values.size(); s++ )
       {
 
+    	Vec coords;
+    	MatNullSpace matnull;
+
         libMesh::Real pressure = _pressure_values[s];
         
         std::cout << "==========================================================" << std::endl
@@ -87,6 +93,33 @@ namespace GRINS
                   << "==========================================================" << std::endl;
 
         this->increment_pressure(*(context.system), pressure);
+
+        libMesh::EquationSystems *es = context.equation_system.get();
+
+        VecCreate(PETSC_COMM_WORLD,&coords);
+        VecSetSizes(coords,es->get_mesh().n_local_nodes()*3,es->get_mesh().n_nodes()*3);
+        VecSetBlockSize(coords,3);
+
+        libMesh::Node *N;
+        PetscInt ind=0;
+        for( libMesh::MeshBase::node_iterator it = es->get_mesh().nodes_begin();
+             it != es->get_mesh().nodes_end(); it++ )
+          {
+        	N=*it;
+        	VecSetValue(coords,ind,(*N)(0),INSERT_VALUES);
+        	ind++;
+        	VecSetValue(coords,ind,(*N)(1),INSERT_VALUES);
+        	ind++;
+        	VecSetValue(coords,ind,(*N)(2),INSERT_VALUES);
+        	ind++;
+          }
+
+        MatNullSpaceCreateRigidBody(coords,&matnull);
+
+        libMesh::TimeSolver *ts = context.system->get_time_solver();
+        libMesh::DiffSolver *ds = (*ts).diff_solver();
+
+        context.system->get_linear_solver()
 
         context.system->solve();
 
