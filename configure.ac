@@ -266,7 +266,7 @@ AC_SUBST(HAVE_CANTERA)
 AM_CONDITIONAL(CANTERA_ENABLED,test x$HAVE_CANTERA = x1)
 
 
-AX_PATH_ANTIOCH(0.2.0,no)
+AX_PATH_ANTIOCH(0.4.0,no)
 
 
 dnl-------------------
@@ -379,7 +379,7 @@ AC_CONFIG_FILES(test/gas_solid_catalytic_wall_unit_antioch.sh,            [chmod
 AC_CONFIG_FILES(test/antioch_mixture_unit.sh,                             [chmod +x test/antioch_mixture_unit.sh])
 AC_CONFIG_FILES(test/antioch_kinetics_regression.sh,                      [chmod +x test/antioch_kinetics_regression.sh])
 AC_CONFIG_FILES(test/antioch_evaluator_regression.sh,                     [chmod +x test/antioch_evaluator_regression.sh])
-AC_CONFIG_FILES(test/antioch_wilke_evaluator_regression.sh,               [chmod +x test/antioch_wilke_evaluator_regression.sh])
+AC_CONFIG_FILES(test/antioch_mixture_averaged_transport_evaluator_regression.sh,               [chmod +x test/antioch_mixture_averaged_transport_evaluator_regression.sh])
 AC_CONFIG_FILES(test/input_files/antioch.in)
 AC_CONFIG_FILES(test/input_files/gas_surface.in)
 AC_CONFIG_FILES(test/elastic_mooney_rivlin_sheet_regression.sh,           [chmod +x test/elastic_mooney_rivlin_sheet_regression.sh])
@@ -437,6 +437,14 @@ AC_CONFIG_FILES(test/laplace_parsed_source_regression.sh, [chmod +x test/laplace
 
 AC_CONFIG_FILES(test/axisym_reacting_low_mach_antioch_cea_constant_regression.sh, [chmod +x test/axisym_reacting_low_mach_antioch_cea_constant_regression.sh])
 AC_CONFIG_FILES(test/input_files/axisym_reacting_low_mach_antioch_cea_constant_regression.in)
+AC_CONFIG_FILES(test/poisson_weighted_flux_regression.sh, [chmod +x test/poisson_weighted_flux_regression.sh])
+
+AC_CONFIG_FILES(test/reacting_low_mach_antioch_kinetics_theory_regression.sh, [chmod +x test/reacting_low_mach_antioch_kinetics_theory_regression.sh])
+AC_CONFIG_FILES(test/input_files/reacting_low_mach_antioch_kinetics_theory_regression.in)
+
+AC_CONFIG_FILES(test/stokes_invalid_pin_location_unit.sh, [chmod +x test/stokes_invalid_pin_location_unit.sh])
+AC_CONFIG_FILES(test/ins_invalid_pin_location_unit.sh, [chmod +x test/ins_invalid_pin_location_unit.sh])
+AC_CONFIG_FILES(test/lmns_invalid_pin_location_unit.sh, [chmod +x test/lmns_invalid_pin_location_unit.sh])
 
 dnl-----------------------------------------------
 dnl Generate run scripts for examples
@@ -454,6 +462,7 @@ AC_CONFIG_FILES(examples/coupled_stokes_navierstokes/run.sh, [chmod +x examples/
 AC_CONFIG_FILES(examples/elastic_sheet/run.sh,               [chmod +x examples/elastic_sheet/run.sh])
 AC_CONFIG_FILES(examples/cable_displacement/run.sh,          [chmod +x examples/cable_displacement/run.sh])
 AC_CONFIG_FILES(examples/inflating_sheet/run.sh,             [chmod +x examples/inflating_sheet/run.sh])
+AC_CONFIG_FILES(examples/sa_airfoil/run.sh,         [chmod +x examples/sa_airfoil/run.sh])
 AC_CONFIG_FILES(examples/suspended_cable/run.sh,             [chmod +x examples/suspended_cable/run.sh])
 AC_CONFIG_FILES(examples/mixed_dim_inflating_sheet/run.sh,   [chmod +x examples/mixed_dim_inflating_sheet/run.sh])
 

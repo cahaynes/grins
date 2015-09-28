@@ -22,45 +22,20 @@
 //
 //-----------------------------------------------------------------------el-
 
-
-#include "grins_config.h"
-
-#ifdef GRINS_HAVE_ANTIOCH
-
 // This class
-#include "grins/antioch_wilke_transport_mixture.h"
-
-// libMesh
-#include "libmesh/getpot.h"
+#include "grins/parsed_property_base.h"
 
 namespace GRINS
 {
-  template<typename T, typename V, typename C, typename D>
-  AntiochWilkeTransportMixture<T,V,C,D>::AntiochWilkeTransportMixture( const GetPot& input )
-    : AntiochMixture(input),
-      _wilke_mixture(*(this->_antioch_gas.get())),
-      _thermo(NULL),
-      _viscosity(NULL),
-      _conductivity(NULL),
-      _diffusivity(NULL)
+  bool ParsedPropertyBase::check_func_nonzero( const std::string& function ) const
   {
-    this->build_thermo( input );
+    bool is_nonzero = true;
 
-    this->build_viscosity( input );
+    if (function == std::string("0"))
+      {
+        is_nonzero = false;
+      }
 
-    this->build_conductivity( input );
-
-    this->build_diffusivity( input );
-
-    return;
+    return is_nonzero;
   }
-
-  template<typename T, typename V, typename C, typename D>
-  AntiochWilkeTransportMixture<T,V,C,D>::~AntiochWilkeTransportMixture()
-  {
-    return;
-  }
-
 } // end namespace GRINS
-
-#endif // GRINS_HAVE_ANTIOCH

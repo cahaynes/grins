@@ -138,6 +138,7 @@ libgrins_la_SOURCES += physics/src/parsed_source_term.C
 libgrins_la_SOURCES += physics/src/constant_damping.C
 
 # src/properties files
+libgrins_la_SOURCES += properties/src/parsed_property_base.C
 libgrins_la_SOURCES += properties/src/constant_conductivity.C
 libgrins_la_SOURCES += properties/src/parsed_conductivity.C
 libgrins_la_SOURCES += properties/src/constant_prandtl_conductivity.C
@@ -155,8 +156,8 @@ libgrins_la_SOURCES += properties/src/antioch_chemistry.C
 libgrins_la_SOURCES += properties/src/antioch_mixture.C
 libgrins_la_SOURCES += properties/src/antioch_kinetics.C
 libgrins_la_SOURCES += properties/src/antioch_evaluator_instantiate.C
-libgrins_la_SOURCES += properties/src/antioch_wilke_transport_mixture_instantiate.C
-libgrins_la_SOURCES += properties/src/antioch_wilke_transport_evaluator_instantiate.C
+libgrins_la_SOURCES += properties/src/antioch_mixture_averaged_transport_mixture_instantiate.C
+libgrins_la_SOURCES += properties/src/antioch_mixture_averaged_transport_evaluator_instantiate.C
 libgrins_la_SOURCES += properties/src/antioch_constant_transport_instantiate.C
 libgrins_la_SOURCES += properties/src/hookes_law.C
 libgrins_la_SOURCES += properties/src/hookes_law_1d.C
@@ -173,6 +174,7 @@ libgrins_la_SOURCES += qoi/src/vorticity.C
 libgrins_la_SOURCES += qoi/src/composite_qoi.C
 libgrins_la_SOURCES += qoi/src/parsed_boundary_qoi.C
 libgrins_la_SOURCES += qoi/src/parsed_interior_qoi.C
+libgrins_la_SOURCES += qoi/src/weighted_flux_qoi.C
 
 # src/solver files
 libgrins_la_SOURCES += solver/src/grins_solver.C
@@ -218,8 +220,8 @@ sfiles_DATA += boundary_conditions/src/gas_solid_catalytic_wall.C
 sfiles_DATA += physics/src/reacting_low_mach_navier_stokes_base.C
 sfiles_DATA += physics/src/reacting_low_mach_navier_stokes.C
 sfiles_DATA += properties/src/antioch_evaluator.C
-sfiles_DATA += properties/src/antioch_wilke_transport_mixture.C
-sfiles_DATA += properties/src/antioch_wilke_transport_evaluator.C
+sfiles_DATA += properties/src/antioch_mixture_averaged_transport_mixture.C
+sfiles_DATA += properties/src/antioch_mixture_averaged_transport_evaluator.C
 sfiles_DATA += properties/src/antioch_constant_transport_mixture.C
 sfiles_DATA += properties/src/antioch_constant_transport_evaluator.C
 
@@ -356,6 +358,7 @@ include_HEADERS += physics/include/grins/constant_damping.h
 
 # src/properties headers
 include_HEADERS += properties/include/grins/property_types.h
+include_HEADERS += properties/include/grins/parsed_property_base.h
 include_HEADERS += properties/include/grins/constant_conductivity.h
 include_HEADERS += properties/include/grins/parsed_conductivity.h
 include_HEADERS += properties/include/grins/constant_prandtl_conductivity.h
@@ -374,8 +377,8 @@ include_HEADERS += properties/include/grins/antioch_chemistry.h
 include_HEADERS += properties/include/grins/antioch_kinetics.h
 include_HEADERS += properties/include/grins/antioch_mixture.h
 include_HEADERS += properties/include/grins/antioch_evaluator.h
-include_HEADERS += properties/include/grins/antioch_wilke_transport_mixture.h
-include_HEADERS += properties/include/grins/antioch_wilke_transport_evaluator.h
+include_HEADERS += properties/include/grins/antioch_mixture_averaged_transport_mixture.h
+include_HEADERS += properties/include/grins/antioch_mixture_averaged_transport_evaluator.h
 include_HEADERS += properties/include/grins/antioch_constant_transport_mixture.h
 include_HEADERS += properties/include/grins/antioch_constant_transport_evaluator.h
 include_HEADERS += properties/include/grins/elasticity_tensor.h
@@ -396,6 +399,7 @@ include_HEADERS += qoi/include/grins/vorticity.h
 include_HEADERS += qoi/include/grins/composite_qoi.h
 include_HEADERS += qoi/include/grins/parsed_boundary_qoi.h
 include_HEADERS += qoi/include/grins/parsed_interior_qoi.h
+include_HEADERS += qoi/include/grins/weighted_flux_qoi.h
 
 # src/solver headers
 include_HEADERS += solver/include/grins/grins_solver.h
@@ -440,6 +444,10 @@ endif
 
 if GRVY_ENABLED
    libgrins_la_LIBADD += $(GRVY_PREFIX)/lib/libgrvy.la
+endif
+
+if ANTIOCH_ENABLED
+   libgrins_la_LIBADD += $(ANTIOCH_LDFLAGS) $(ANTIOCH_LIBS)
 endif
 
 #------------------------------------
