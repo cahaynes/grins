@@ -69,6 +69,7 @@
 #include "grins/constant_source_term.h"
 #include "grins/parsed_source_term.h"
 #include "grins/constant_damping.h"
+#include "grins/constant_damping2.h"
 
 #include "grins/spalart_allmaras.h"
 #include "grins/spalart_allmaras_spgsm_stab.h"
@@ -807,6 +808,11 @@ namespace GRINS
       {
         physics_list[physics_to_add] =
           PhysicsPtr(new ConstantDamping(physics_to_add,input));
+      }
+    else if( physics_to_add == constant_damping2 )
+      {
+        physics_list[physics_to_add] =
+          PhysicsPtr(new ConstantDamping2(physics_to_add,input));
       }
     else
       {

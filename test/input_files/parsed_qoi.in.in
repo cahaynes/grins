@@ -97,10 +97,6 @@ qoi_functional = 'a:=1;a+u'
 [../ParsedInterior]
 qoi_functional = 'a:=1;a*u'
 
-[./ParsedBoundary]
-bc_ids = '3'
-qoi_functional = 'u'
-
 [../ParsedInterior]
 qoi_functional = 'u'
 

@@ -65,7 +65,6 @@ namespace GRINS
     return new ParsedBoundaryQoI( *this );
   }
 
-
   void ParsedBoundaryQoI::init( const GetPot& input,
                                 const MultiphysicsSystem& system,
                                 unsigned int /*qoi_num*/ )

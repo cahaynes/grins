@@ -76,6 +76,7 @@ namespace GRINS
   const PhysicsName constant_source_term = "ConstantSourceTerm";
   const PhysicsName parsed_source_term = "ParsedSourceTerm";
   const PhysicsName constant_damping = "ConstantDamping";
+  const PhysicsName constant_damping2 = "ConstantDamping2";
 }
 
 #endif //GRINS_PHYSICS_NAMES_H
