@@ -46,33 +46,9 @@ namespace GRINS
   ElasticCable<StressStrainLaw>::ElasticCable( const PhysicsName& physics_name, const GetPot& input,
                                                bool is_compressible )
     : ElasticCableBase(physics_name,input),
-      _stress_strain_law(input),
-      _A( 1.0 ),
-      _rho(1.0),
+      _stress_strain_law(input,input("Physics/"+elastic_cable+"/material", "NoMaterial!")),
       _is_compressible(is_compressible)
   {
-    // Force the user to set A
-    if( !input.have_variable("Physics/"+physics_name+"/A") )
-      {
-        std::cerr << "Error: Must specify initial area for "+physics_name << std::endl
-                  << "       Input the option Physics/"+physics_name+"/A" << std::endl;
-        libmesh_error();
-      }
-
-    // Force the user to set rho
-    if( !input.have_variable("Physics/"+physics_name+"/rho") )
-      {
-        std::cerr << "Error: Must specify density for "+physics_name << std::endl
-                  << "       Input the option Physics/"+physics_name+"/rho" << std::endl;
-        libmesh_error();
-      }
-
-    this->set_parameter
-      (_A, input, "Physics/"+physics_name+"/A", _A );
-
-    this->set_parameter
-      (_rho, input, "Physics/"+physics_name+"/rho", _rho );
-
     this->_bc_handler = new SolidMechanicsBCHandling( physics_name, input );
 
     this->_ic_handler = new GenericICHandler(physics_name, input);

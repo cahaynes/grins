@@ -27,11 +27,13 @@
 #include "grins/heat_conduction.h"
 
 // GRINS
+#include "grins/common.h"
 #include "grins/assembly_context.h"
 #include "grins/generic_ic_handler.h"
 #include "grins/heat_transfer_bc_handling.h"
 #include "grins/heat_transfer_macros.h"
 #include "grins/grins_physics_names.h"
+#include "grins/materials_parsing.h"
 
 // libMesh
 #include "libmesh/quadrature.h"
@@ -39,21 +41,18 @@
 
 namespace GRINS
 {
-  
+
   template<class K>
   HeatConduction<K>::HeatConduction( const GRINS::PhysicsName& physics_name, const GetPot& input )
     : Physics(physics_name,input),
       _temp_vars(input,heat_conduction),
-      _rho(1.0),
-      _Cp(1.0),
-      _k(input)
+      _rho(0.0),
+      _Cp(0.0),
+      _k(input,input("Physics/"+heat_conduction+"/material", "NoMaterial!"))
   {
-    // \todo same as Incompressible NS
-    this->set_parameter
-      (_rho, input, "Physics/"+heat_conduction+"/rho", _rho );
+    MaterialsParsing::read_density( heat_conduction, input, (*this), this->_rho );
 
-    this->set_parameter
-      (_Cp, input, "Physics/"+heat_conduction+"/Cp", _Cp );
+    MaterialsParsing::read_specific_heat( heat_conduction, input, (*this), this->_Cp );
 
     // This is deleted in the base class
     this->_bc_handler = new HeatTransferBCHandling( physics_name, input );
@@ -241,7 +240,7 @@ namespace GRINS
   template<class K>
   void HeatConduction<K>::register_parameter
     ( const std::string & param_name,
-      libMesh::ParameterMultiPointer<libMesh::Number> & param_pointer )
+      libMesh::ParameterMultiAccessor<libMesh::Number> & param_pointer )
     const
   {
     ParameterUser::register_parameter(param_name, param_pointer);

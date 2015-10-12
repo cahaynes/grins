@@ -34,7 +34,7 @@
 #include "libmesh/getpot.h"
 
 // Antioch
-#include "antioch/read_reaction_set_data_xml.h"
+#include "antioch/read_reaction_set_data.h"
 #include "antioch/cea_mixture_ascii_parsing.h"
 #include "antioch/stat_mech_thermo.h"
 
@@ -56,7 +56,11 @@ namespace GRINS
       
     Antioch::read_reaction_set_data_xml<libMesh::Real>( xml_filename, verbose_read, *_reaction_set.get() );
 
-    Antioch::read_cea_mixture_data_ascii_default( *_cea_mixture.get() );
+    std::string cea_data_filename = input( "Physics/Antioch/cea_data", "default" );
+    if( cea_data_filename == std::string("default") )
+      cea_data_filename = Antioch::DefaultInstallFilename::thermo_data();
+
+    Antioch::read_cea_mixture_data_ascii( *_cea_mixture.get(), cea_data_filename );
 
     this->build_stat_mech_ref_correction();
 

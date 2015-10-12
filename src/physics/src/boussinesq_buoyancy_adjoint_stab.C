@@ -30,6 +30,7 @@
 // GRINS
 #include "grins/assembly_context.h"
 #include "grins/inc_nav_stokes_macro.h"
+#include "grins/materials_parsing.h"
 
 // libMesh
 #include "libmesh/getpot.h"
@@ -42,14 +43,9 @@ namespace GRINS
   template<class Mu>
   BoussinesqBuoyancyAdjointStabilization<Mu>::BoussinesqBuoyancyAdjointStabilization( const std::string& physics_name, const GetPot& input )
     : BoussinesqBuoyancyBase(physics_name,input),
-      /* \todo Do we want to have these come from a BoussinesqBuoyancyAdjointStabilization section instead? */
-      _rho(1.0),
-      _mu(input),
+      _mu(input,input("Physics/"+boussinesq_buoyancy+"/material", "NoMaterial!")),
       _stab_helper( physics_name+"StabHelper", input )
-  {
-    this->set_parameter
-      (_rho, input, "Physics/"+incompressible_navier_stokes+"/rho", _rho);
-  }
+  {}
 
   template<class Mu>
   BoussinesqBuoyancyAdjointStabilization<Mu>::~BoussinesqBuoyancyAdjointStabilization()
@@ -182,7 +178,7 @@ namespace GRINS
         libMesh::Number T;
         T = context.interior_value(_temp_vars.T_var(), qp);
 
-        libMesh::RealGradient d_residual_dT = _rho_ref*_beta_T*_g;
+        libMesh::RealGradient d_residual_dT = _rho*_beta_T*_g;
         // d_residual_dU = 0
         libMesh::RealGradient residual = (T-_T_ref)*d_residual_dT;
 
@@ -344,7 +340,7 @@ namespace GRINS
         libMesh::Number T;
         T = context.interior_value(_temp_vars.T_var(), qp);
 
-        libMesh::RealGradient d_residual_dT = _rho_ref*_beta_T*_g;
+        libMesh::RealGradient d_residual_dT = _rho*_beta_T*_g;
         // d_residual_dU = 0
         libMesh::RealGradient residual = (T-_T_ref)*d_residual_dT;
 
@@ -386,7 +382,7 @@ namespace GRINS
   template<class Mu>
   void BoussinesqBuoyancyAdjointStabilization<Mu>::register_parameter
     ( const std::string & param_name,
-      libMesh::ParameterMultiPointer<libMesh::Number> & param_pointer )
+      libMesh::ParameterMultiAccessor<libMesh::Number> & param_pointer )
     const
   {
     ParameterUser::register_parameter(param_name, param_pointer);

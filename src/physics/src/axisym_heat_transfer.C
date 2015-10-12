@@ -32,6 +32,7 @@
 #include "grins/generic_ic_handler.h"
 #include "grins/grins_enums.h"
 #include "grins/heat_transfer_macros.h"
+#include "grins/materials_parsing.h"
 
 // libMesh
 #include "libmesh/utility.h"
@@ -47,7 +48,7 @@ namespace GRINS
   AxisymmetricHeatTransfer<Conductivity>::AxisymmetricHeatTransfer( const std::string& physics_name,
 								    const GetPot& input)
     : Physics(physics_name, input),
-      _k(input)
+      _k(input,input("Physics/"+axisymmetric_heat_transfer+"/material", "NoMaterial!"))
   {
     this->read_input_options(input);
   
@@ -79,14 +80,10 @@ namespace GRINS
     this->_V_order =
       libMesh::Utility::string_to_enum<GRINSEnums::Order>( input("Physics/"+incompressible_navier_stokes+"/V_order", "SECOND") );
 
-    //TODO: same as Incompressible NS
-    this->set_parameter
-      (this->_rho, input,
-       "Physics/"+axisymmetric_heat_transfer+"/rho", 1.0);
 
-    this->set_parameter
-      (this->_Cp, input,
-       "Physics/"+axisymmetric_heat_transfer+"/Cp", 1.0);
+    MaterialsParsing::read_density( axisymmetric_heat_transfer, input, (*this), this->_rho );
+
+    MaterialsParsing::read_specific_heat( axisymmetric_heat_transfer, input, (*this), this->_Cp );
 
     this->_T_var_name = input("Physics/VariableNames/Temperature", T_var_name_default );
 
@@ -370,7 +367,7 @@ namespace GRINS
   template< class Conductivity>
   void AxisymmetricHeatTransfer<Conductivity>::register_parameter
     ( const std::string & param_name,
-      libMesh::ParameterMultiPointer<libMesh::Number> & param_pointer )
+      libMesh::ParameterMultiAccessor<libMesh::Number> & param_pointer )
     const
   {
     ParameterUser::register_parameter(param_name, param_pointer);

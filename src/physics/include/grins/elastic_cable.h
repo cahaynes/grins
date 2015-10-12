@@ -90,10 +90,6 @@ namespace GRINS
 
     StressStrainLaw _stress_strain_law;
 
-    libMesh::Real _A;
-
-    libMesh::Real _rho;
-
     bool _is_compressible;
 
     //! Index from registering this quantity. Each component will have it's own index.

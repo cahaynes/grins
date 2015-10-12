@@ -53,6 +53,10 @@ namespace GRINS
   {
   public:
 
+    //! Constructor with specified material
+    SpalartAllmarasViscosity( const GetPot& input, const std::string& material );
+
+    //! Deprecated constructor
     SpalartAllmarasViscosity( const GetPot& input );
     ~SpalartAllmarasViscosity(){};
 
@@ -62,6 +66,13 @@ namespace GRINS
     { return _mu(p,time); }
 
     void init(libMesh::FEMSystem* system);
+
+    // Registers all parameters in this physics and in its property
+    // classes
+    virtual void register_parameter
+      ( const std::string & param_name,
+        libMesh::ParameterMultiAccessor<libMesh::Number> & param_pointer )
+    const;
 
   protected:
 

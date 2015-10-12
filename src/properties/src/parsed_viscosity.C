@@ -1,3 +1,13 @@
+//-----------------------------------------------------------------------bl-
+//--------------------------------------------------------------------------
+//
+// GRINS - General Reacting Incompressible Navier-Stokes
+//
+// Copyright (C) 2014-2015 Paul T. Bauman, Roy H. Stogner
+// Copyright (C) 2010-2013 The PECOS Development Team
+//
+// This library is free software; you can redistribute it and/or
+// modify it under the terms of the Version 2.1 GNU Lesser General
 // Public License as published by the Free Software Foundation.
 //
 // This library is distributed in the hope that it will be useful,
@@ -18,39 +28,78 @@
 
 //GRINS
 #include "grins/grins_physics_names.h"
+#include "grins/common.h"
 
 // libMesh
 #include "libmesh/getpot.h"
-#include "libmesh/parsed_function.h"
 
 namespace GRINS
 {
 
-   ParsedViscosity::ParsedViscosity( const GetPot& input ) :
-     ParameterUser("ParsedViscosity")
-    {
-      if( !input.have_variable("Materials/Viscosity/mu") )
-       {
-         std::cerr<<"No viscosity has been specified."<<std::endl;
-      
-         libmesh_error();
-       }
-      else
-       {
-         std::string viscosity_function = input("Materials/Viscosity/mu",std::string("0"));
+   ParsedViscosity::ParsedViscosity( const GetPot& input )
+     : ParsedPropertyBase(),
+       ParameterUser("ParsedViscosity"),
+       ViscosityBase()
+   {
 
-         mu.reset(new libMesh::ParsedFunction<libMesh::Number>(viscosity_function));
+     // Warning about this constructor being deprecated
+     {
+       std::string warning = "WARNING: Use of this constructor is DEPRECATED.\n";
+       warning += "         Please update to use constructor with input material name.\n";
+       grins_warning(warning);
+     }
 
-         if (viscosity_function == "0")
-            {
-              std::cerr << "Warning! Zero Viscosity specified!" << std::endl;
+    this->set_parameter(this->_func, input,
+                        "Materials/Viscosity/mu",
+                        "DIE!");
 
-              libmesh_error();
-            }
-       }
+    std::string viscosity_function = input("Materials/Viscosity/mu",std::string("0"));
 
-      return;
+    if( !this->check_func_nonzero(viscosity_function) )
+      {
+        libmesh_error_msg("ERROR: Detected '0' function for ParsedConductivity!");
       }
+  }
+
+  ParsedViscosity::ParsedViscosity( const GetPot& input, const std::string& material )
+    : ParameterUser("ParsedViscosity"),
+      ViscosityBase()
+  {
+    this->check_input_consistency(input,material);
+
+    std::string viscosity_function = "0";
+
+    // If we have the new version, we parse that
+    if( input.have_variable("Materials/"+material+"/Viscosity/value") )
+      {
+        this->set_parameter(this->_func, input,
+                            "Materials/"+material+"/Viscosity/value",
+                            "DIE!");
+
+        viscosity_function = input("Materials/"+material+"/Viscosity/value",std::string("0"));
+      }
+    // If we have the old DEPRECATED version, use that
+    else if( input.have_variable("Materials/Viscosity/mu") )
+      {
+        this->old_mu_warning();
+
+        this->set_parameter(this->_func, input,
+                            "Materials/Viscosity/mu",
+                            "DIE!");
+
+        viscosity_function = input("Materials/Viscosity/mu",std::string("0"));
+      }
+    // If we don't have either, that's an error
+    else
+      {
+        libmesh_error_msg("Error: Could not find either Materials/"+material+"/Viscosity/value or Materials/Viscosity/mu");
+      }
+
+    if( !this->check_func_nonzero(viscosity_function) )
+      {
+        libmesh_error_msg("ERROR: Detected '0' function for ParsedConductivity!");
+      }
+  }
 
   ParsedViscosity::~ParsedViscosity()
   {

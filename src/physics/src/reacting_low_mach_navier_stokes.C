@@ -77,8 +77,15 @@ namespace GRINS
 
     // Read pressure pinning information
     this->_pin_pressure = input("Physics/"+reacting_low_mach_navier_stokes+"/pin_pressure", false );
-  
+
     return;
+  }
+
+  template<typename Mixture, typename Evaluator>
+  void ReactingLowMachNavierStokes<Mixture,Evaluator>::auxiliary_init( MultiphysicsSystem& system )
+  {
+    if( _pin_pressure )
+      _p_pinning.check_pin_location(system.get_mesh());
   }
 
   template<typename Mixture, typename Evaluator>
@@ -417,9 +424,9 @@ namespace GRINS
   }
 
   template<typename Mixture, typename Evaluator>
-  void ReactingLowMachNavierStokes<Mixture,Evaluator>::side_constraint( bool compute_jacobian,
-                                                                        AssemblyContext& context,
-                                                                        CachedValues& /* cache */ )
+  void ReactingLowMachNavierStokes<Mixture,Evaluator>::element_constraint( bool compute_jacobian,
+                                                                           AssemblyContext& context,
+                                                                           CachedValues& /* cache */ )
   {
     // Pin p = p_value at p_point
     if( this->_pin_pressure )
@@ -565,14 +572,15 @@ namespace GRINS
 
     for (unsigned int qp = 0; qp != n_qpoints; ++qp)
       {
-	gas_evaluator.mu_and_k(cache,qp,mu[qp],k[qp]);
-	cp[qp] = gas_evaluator.cp(cache,qp);
+        cp[qp] = gas_evaluator.cp(cache,qp);
+
+        D_s[qp].resize(this->_n_species);
+
+        gas_evaluator.mu_and_k_and_D( T[qp], rho[qp], cp[qp], mass_fractions[qp],
+                                      mu[qp], k[qp], D_s[qp] );
 
 	h_s[qp].resize(this->_n_species);
 	gas_evaluator.h_s( cache, qp, h_s[qp] );
-
-	D_s[qp].resize(this->_n_species);
-	gas_evaluator.D( cache, qp, D_s[qp] );
 
 	omega_dot_s[qp].resize(this->_n_species);
 	gas_evaluator.omega_dot( cache, qp, omega_dot_s[qp] );

@@ -25,6 +25,7 @@
 
 // This class
 #include "grins/physics_factory.h"
+#include "grins/physics_factory_helper.h"
 
 // GRINS
 #include "grins/cantera_mixture.h"
@@ -83,7 +84,7 @@
 #include "grins/heat_conduction.h"
 #include "grins/constant_source_func.h"
 
-#include "grins/antioch_wilke_transport_evaluator.h"
+#include "grins/antioch_mixture_averaged_transport_evaluator.h"
 #include "grins/antioch_constant_transport_mixture.h"
 #include "grins/antioch_constant_transport_evaluator.h"
 
@@ -91,6 +92,17 @@
 #include "grins/hookes_law_1d.h"
 #include "grins/incompressible_plane_stress_hyperelasticity.h"
 #include "grins/mooney_rivlin.h"
+
+// Antioch
+#ifdef GRINS_HAVE_ANTIOCH
+#include "antioch_config.h"
+#include "antioch/sutherland_viscosity.h"
+#include "antioch/blottner_viscosity.h"
+#include "antioch/sutherland_parsing.h"
+#include "antioch/blottner_parsing.h"
+#include "antioch/eucken_thermal_conductivity.h"
+#include "antioch/constant_lewis_diffusivity.h"
+#endif // GRINS_HAVE_ANTIOCH
 
 // libMesh
 #include "libmesh/getpot.h"
@@ -145,12 +157,14 @@ namespace GRINS
   // This needs to be fixed, but carefully to avoid breaking old input
   // files.
 
+  // We use the core_physics to look for the material model
   template <template<typename> class Subclass>
   PhysicsPtr new_mu_class(const std::string& physics_to_add,
+                          const std::string& core_physics,
                           const GetPot& input)
   {
-    std::string viscosity =
-      input( "Physics/"+incompressible_navier_stokes+"/viscosity_model", "constant" );
+    std::string viscosity;
+    PhysicsFactoryHelper::parse_viscosity_model(input,core_physics,viscosity);
 
     if( viscosity == "constant" )
       return PhysicsPtr
@@ -158,53 +172,46 @@ namespace GRINS
     else if( viscosity == "parsed" )
       return PhysicsPtr
         (new Subclass<ParsedViscosity>(physics_to_add,input));
+    // For SA viscosity model, we need to parse what the "sub" viscosity model is
     else if( viscosity == "spalartallmaras" )
-      return PhysicsPtr
-        (new Subclass<SpalartAllmarasViscosity<ConstantViscosity> >(physics_to_add,input));
+      {
+        std::string turb_viscosity;
+        PhysicsFactoryHelper::parse_turb_viscosity_model(input,core_physics,turb_viscosity);
+        if( turb_viscosity == "constant" )
+          return PhysicsPtr
+            (new Subclass<SpalartAllmarasViscosity<ConstantViscosity> >(physics_to_add,input));
+        visc_error(physics_to_add, turb_viscosity);
+      }
 
     visc_error(physics_to_add, viscosity);
     return PhysicsPtr();
   }
 
-  /* Specialize new_mu_class for SA since it is only valid for viscosity == "spalartallmaras"
-     AND *must* be instantiated with *physical* viscosity */
-  template <>
-  PhysicsPtr new_mu_class<SpalartAllmaras>(const std::string& physics_to_add,
-                                                                    const GetPot& input)
-  {
-    std::string viscosity =
-      input( "Physics/"+incompressible_navier_stokes+"/viscosity_model", "constant" );
-
-    if( viscosity == "spalartallmaras" )
-      return PhysicsPtr
-        (new SpalartAllmaras<ConstantViscosity>(physics_to_add,input));
-
-    visc_error(physics_to_add, viscosity);
-    return PhysicsPtr();
-  }
-
-  // Instantiate classes whose only valid viscosity models are turbulent
+  // Parse viscosity model for turbulence classes
   template <template<typename> class Subclass>
   PhysicsPtr new_turb_mu_class(const std::string& physics_to_add,
+                               const std::string& core_physics,
                                const GetPot& input)
   {
-    std::string viscosity =
-      input( "Physics/"+incompressible_navier_stokes+"/viscosity_model", "constant" );
+    std::string viscosity;
+    PhysicsFactoryHelper::parse_turb_viscosity_model(input,core_physics,viscosity);
 
-    if( viscosity == "spalartallmaras" )
+    if( viscosity == "constant" )
       return PhysicsPtr
-        (new Subclass<SpalartAllmarasViscosity<ConstantViscosity> >(physics_to_add,input));
+        (new Subclass<ConstantViscosity>(physics_to_add,input));
 
     visc_error(physics_to_add, viscosity);
     return PhysicsPtr();
   }
 
+  // core_physics is used to determine material model
   template <template<typename> class Subclass>
   PhysicsPtr new_k_class(const std::string& physics_to_add,
+                         const std::string& core_physics,
                          const GetPot& input)
   {
-    std::string conductivity =
-      input( "Physics/"+heat_transfer+"/conductivity_model", "constant" );
+    std::string conductivity;
+    PhysicsFactoryHelper::parse_conductivity_model(input,core_physics,conductivity);
 
     if( conductivity == "constant" )
       return PhysicsPtr
@@ -219,11 +226,17 @@ namespace GRINS
 
   template <template<typename,typename,typename> class Subclass>
   PhysicsPtr new_mu_cp_k_class(const std::string& physics_to_add,
+                               const std::string& core_physics,
                                const GetPot& input)
   {
-    std::string conductivity  = input( "Physics/"+low_mach_navier_stokes+"/conductivity_model", "constant" );
-    std::string viscosity     = input( "Physics/"+low_mach_navier_stokes+"/viscosity_model", "constant" );
-    std::string specific_heat = input( "Physics/"+low_mach_navier_stokes+"/specific_heat_model", "constant" );
+    std::string conductivity;
+    PhysicsFactoryHelper::parse_conductivity_model(input,core_physics,conductivity);
+
+    std::string viscosity;
+    PhysicsFactoryHelper::parse_viscosity_model(input,core_physics,viscosity);
+
+    std::string specific_heat;
+    PhysicsFactoryHelper::parse_specific_heat_model(input,core_physics,specific_heat);
 
     if(  conductivity == "constant" && viscosity == "constant" && specific_heat == "constant" )
       {
@@ -236,6 +249,83 @@ namespace GRINS
 
     visc_cond_specheat_error(physics_to_add, conductivity,
                              viscosity, specific_heat);
+    return PhysicsPtr();
+  }
+
+  template <template<typename> class Subclass>
+  PhysicsPtr new_plane_stress_class(const std::string& physics_to_add,
+                                    const std::string& core_physics,
+                                    const GetPot& input)
+  {
+    std::string model = "none";
+    std::string strain_energy = "none";
+
+    PhysicsFactoryHelper::parse_stress_strain_model( input,
+                                                     core_physics,
+                                                     model,
+                                                     strain_energy );
+
+    if( model == std::string("hookes_law") )
+      {
+        return PhysicsPtr
+          (new Subclass<HookesLaw>
+           (physics_to_add,input, false /*is_compressible*/));
+      }
+    else if( model == std::string("incompressible_hyperelasticity") )
+      {
+        if( strain_energy == std::string("mooney_rivlin") )
+          {
+            return PhysicsPtr
+              (new Subclass<IncompressiblePlaneStressHyperelasticity<MooneyRivlin> >
+               (physics_to_add,input,false /*is_compressible*/));
+          }
+        else
+          {
+            std::string error = "ERROR: Invalid strain_energy "+strain_energy+"!\n";
+            error += "       Valid values are: mooney_rivlin\n";
+            libmesh_error_msg(error);
+          }
+
+      }
+    else
+      {
+        std::string error = "Error: Invalid stress-strain model: "+model+"!\n";
+        error += "       Valid values are: hookes_law\n";
+        error += "                         incompressible_hyperelasticity\n";
+        libmesh_error_msg(error);
+      }
+
+    // dummy
+    return PhysicsPtr();
+  }
+
+  template <template<typename> class Subclass>
+  PhysicsPtr new_one_d_stress_class(const std::string& physics_to_add,
+                                    const std::string& core_physics,
+                                    const GetPot& input)
+  {
+    std::string model = "none";
+    std::string strain_energy = "none";
+
+    PhysicsFactoryHelper::parse_stress_strain_model( input,
+                                                     core_physics,
+                                                     model,
+                                                     strain_energy );
+
+    if( model == std::string("hookes_law") )
+      {
+        return PhysicsPtr
+          (new Subclass<HookesLaw1D>
+           (physics_to_add,input, false /*is_compressible*/));
+      }
+    else
+      {
+        std::string error = "Error: Invalid stress-strain model: "+model+"!\n";
+        error += "       Valid values are: hookes_law\n";
+        libmesh_error_msg(error);
+      }
+
+    // dummy
     return PhysicsPtr();
   }
 
@@ -259,42 +349,80 @@ namespace GRINS
     else if( thermochem_lib == "antioch" )
       {
 #ifdef GRINS_HAVE_ANTIOCH
-        std::string mixing_model = input( "Physics/Antioch/mixing_model" , "wilke" );
+
+        std::string transport_model = input( "Physics/Antioch/transport_model" , "mixture_averaged" );
+
+        // mixing_model option is now deprecated in favor of transport_model
+        if( input.have_variable("Physics/Antioch/mixing_model") )
+          {
+            libMesh::err << "WARNING: Option Physics/Antioch/mixing_model is deprecated!" << std::endl
+                         << "         Use Physics/Antioch/transport_model instead!" << std::endl;
+
+            transport_model = input( "Physics/Antioch/mixing_model" , "mixture_averaged" );
+          }
+
+        // transport_model = wilke is deprecated
+        if( transport_model == std::string("wilke") )
+          {
+            libMesh::err << "WARNING: Physics/Antioch/transport_model value of 'wilke' is deprecated!" << std::endl
+                         << "         Replace Physics/Antioch/transport_model value with 'mixture_averaged'"
+                         << std::endl;
+
+            transport_model = "mixture_averaged";
+          }
 
         std::string thermo_model = input( "Physics/Antioch/thermo_model", "stat_mech");
         std::string viscosity_model = input( "Physics/Antioch/viscosity_model", "blottner");
         std::string conductivity_model = input( "Physics/Antioch/conductivity_model", "eucken");
         std::string diffusivity_model = input( "Physics/Antioch/diffusivity_model", "constant_lewis");
 
-        if( mixing_model == std::string("wilke") )
+        if( transport_model == std::string("mixture_averaged") )
           {
             if( (thermo_model == std::string("stat_mech")) &&
                 (diffusivity_model == std::string("constant_lewis")) &&
                 (conductivity_model == std::string("eucken")) &&
                 (viscosity_model == std::string("sutherland")) )
               {
-                return PhysicsPtr(new Subclass<GRINS::AntiochWilkeTransportMixture<Antioch::StatMechThermodynamics<libMesh::Real>,
-                                                                                   Antioch::MixtureViscosity<Antioch::SutherlandViscosity<libMesh::Real> >,
-                                                                                   Antioch::EuckenThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real> >,
-                                                                                   Antioch::ConstantLewisDiffusivity<libMesh::Real> >,
-                                               GRINS::AntiochWilkeTransportEvaluator<Antioch::StatMechThermodynamics<libMesh::Real>,
-                                                                                     Antioch::MixtureViscosity<Antioch::SutherlandViscosity<libMesh::Real> >,
-                                                                                     Antioch::EuckenThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real> >,
-                                                                                     Antioch::ConstantLewisDiffusivity<libMesh::Real> > >(physics_to_add,input) );
+                return PhysicsPtr(new Subclass<GRINS::AntiochMixtureAveragedTransportMixture<Antioch::StatMechThermodynamics<libMesh::Real>,
+                                                                                             Antioch::SutherlandViscosity<libMesh::Real>,
+                                                                                             Antioch::EuckenThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real> >,
+                                                                                             Antioch::ConstantLewisDiffusivity<libMesh::Real> >,
+                                               GRINS::AntiochMixtureAveragedTransportEvaluator<Antioch::StatMechThermodynamics<libMesh::Real>,
+                                                                                               Antioch::SutherlandViscosity<libMesh::Real>,
+                                                                                               Antioch::EuckenThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real> >,
+                                                                                               Antioch::ConstantLewisDiffusivity<libMesh::Real> > >(physics_to_add,input) );
               }
             else if( (thermo_model == std::string("stat_mech")) &&
                      (diffusivity_model == std::string("constant_lewis")) &&
                      (conductivity_model == std::string("eucken")) &&
                      (viscosity_model == std::string("blottner")) )
               {
-                return PhysicsPtr(new Subclass<GRINS::AntiochWilkeTransportMixture<Antioch::StatMechThermodynamics<libMesh::Real>,
-                                                                                   Antioch::MixtureViscosity<Antioch::BlottnerViscosity<libMesh::Real> >,
-                                                                                   Antioch::EuckenThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real> >,
-                                                                                   Antioch::ConstantLewisDiffusivity<libMesh::Real> >,
-                                               GRINS::AntiochWilkeTransportEvaluator<Antioch::StatMechThermodynamics<libMesh::Real>,
-                                                                                     Antioch::MixtureViscosity<Antioch::BlottnerViscosity<libMesh::Real> >,
-                                                                                     Antioch::EuckenThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real> >,
-                                                                                     Antioch::ConstantLewisDiffusivity<libMesh::Real> > >(physics_to_add,input) );
+                return PhysicsPtr(new Subclass<GRINS::AntiochMixtureAveragedTransportMixture<Antioch::StatMechThermodynamics<libMesh::Real>,
+                                                                                             Antioch::BlottnerViscosity<libMesh::Real>,
+                                                                                             Antioch::EuckenThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real> >,
+                                                                                             Antioch::ConstantLewisDiffusivity<libMesh::Real> >,
+                                               GRINS::AntiochMixtureAveragedTransportEvaluator<Antioch::StatMechThermodynamics<libMesh::Real>,
+                                                                                               Antioch::BlottnerViscosity<libMesh::Real>,
+                                                                                               Antioch::EuckenThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real> >,
+                                                                                               Antioch::ConstantLewisDiffusivity<libMesh::Real> > >(physics_to_add,input) );
+              }
+            else if( (thermo_model == std::string("stat_mech")) &&
+                     (diffusivity_model == std::string("kinetics_theory")) &&
+                     (conductivity_model == std::string("kinetics_theory")) &&
+                     (viscosity_model == std::string("kinetics_theory")) )
+              {
+#ifdef ANTIOCH_HAVE_GSL
+                return PhysicsPtr(new Subclass<GRINS::AntiochMixtureAveragedTransportMixture<Antioch::StatMechThermodynamics<libMesh::Real>,
+                                                                                   Antioch::KineticsTheoryViscosity<libMesh::Real,Antioch::GSLSpliner>,
+                                                                                   Antioch::KineticsTheoryThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real>,libMesh::Real>,
+                                                                                   Antioch::MolecularBinaryDiffusion<libMesh::Real,Antioch::GSLSpliner> >,
+                                               GRINS::AntiochMixtureAveragedTransportEvaluator<Antioch::StatMechThermodynamics<libMesh::Real>,
+                                                                                     Antioch::KineticsTheoryViscosity<libMesh::Real,Antioch::GSLSpliner>,
+                                                                                     Antioch::KineticsTheoryThermalConductivity<Antioch::StatMechThermodynamics<libMesh::Real>,libMesh::Real>,
+                                                                                     Antioch::MolecularBinaryDiffusion<libMesh::Real,Antioch::GSLSpliner> > >(physics_to_add,input) );
+#else
+                libmesh_error_msg("ERROR: Antioch requires GSL in order to use kinetics theory based models!");
+#endif // ANTIOCH_HAVE_GSL
               }
             else
               {
@@ -306,18 +434,18 @@ namespace GRINS
                             libmesh_error();
               }
           }
-        else if( mixing_model == std::string("constant") )
+        else if( transport_model == std::string("constant") )
           {
             if( viscosity_model != std::string("constant") )
               {
-                std::cerr << "Error: For constant mixing_model, viscosity model must be constant!"
+                std::cerr << "Error: For constant transport_model, viscosity model must be constant!"
                           << std::endl;
                 libmesh_error();
               }
 
             if( diffusivity_model != std::string("constant_lewis") )
               {
-                std::cerr << "Error: For constant mixing_model, diffusivity model must be constant_lewis!"
+                std::cerr << "Error: For constant transport_model, diffusivity model must be constant_lewis!"
                           << std::endl;
                 libmesh_error();
               }
@@ -356,10 +484,12 @@ namespace GRINS
                 libmesh_error();
               }
           }
-        else // mixing_model
+        else // transport_model
           {
-            std::cerr << "Error: Unknown Antioch mixing_model "
-                      << mixing_model << "!" << std::endl;
+            std::cerr << "Error: Unknown Antioch transport_model "
+                      << transport_model << "!" << std::endl
+                      << "       Valid values are: constant" << std::endl
+                      << "                         mixture_averaged" << std::endl;
             libmesh_error();
           }
 #else
@@ -447,37 +577,37 @@ namespace GRINS
       {
 	physics_list[physics_to_add] =
           new_mu_class<IncompressibleNavierStokes>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == stokes )
       {
 	physics_list[physics_to_add] =
           new_mu_class<Stokes>
-            (physics_to_add, input);
+          (physics_to_add, stokes, input);
       }
     else if( physics_to_add == incompressible_navier_stokes_adjoint_stab )
       {
 	physics_list[physics_to_add] =
           new_mu_class<IncompressibleNavierStokesAdjointStabilization>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == incompressible_navier_stokes_spgsm_stab )
       {
 	physics_list[physics_to_add] =
           new_mu_class<IncompressibleNavierStokesSPGSMStabilization>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == velocity_drag )
       {
 	physics_list[physics_to_add] =
           new_mu_class<VelocityDrag>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == velocity_drag_adjoint_stab )
       {
 	physics_list[physics_to_add] =
           new_mu_class<VelocityDragAdjointStabilization>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == velocity_penalty  ||
              physics_to_add == velocity_penalty2 ||
@@ -485,7 +615,7 @@ namespace GRINS
       {
 	physics_list[physics_to_add] =
           new_mu_class<VelocityPenalty>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == velocity_penalty_adjoint_stab  ||
              physics_to_add == velocity_penalty2_adjoint_stab ||
@@ -493,49 +623,49 @@ namespace GRINS
       {
 	physics_list[physics_to_add] =
           new_mu_class<VelocityPenaltyAdjointStabilization>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == parsed_velocity_source )
       {
 	physics_list[physics_to_add] =
           new_mu_class<ParsedVelocitySource>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == parsed_velocity_source_adjoint_stab )
       {
 	physics_list[physics_to_add] =
           new_mu_class<ParsedVelocitySourceAdjointStabilization>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == averaged_fan )
       {
 	physics_list[physics_to_add] =
           new_mu_class<AveragedFan>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == averaged_fan_adjoint_stab )
       {
 	physics_list[physics_to_add] =
           new_mu_class<AveragedFanAdjointStabilization>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == averaged_turbine )
       {
 	physics_list[physics_to_add] =
           new_mu_class<AveragedTurbine>
-            (physics_to_add, input);
+          (physics_to_add, incompressible_navier_stokes, input);
       }
     else if( physics_to_add == spalart_allmaras )
       {
         physics_list[physics_to_add] =
-          new_mu_class<SpalartAllmaras>
-            (physics_to_add, input);
+          new_turb_mu_class<SpalartAllmaras>
+          (physics_to_add, spalart_allmaras, input);
       }
     else if( physics_to_add == spalart_allmaras_spgsm_stab )
       {
         physics_list[physics_to_add] =
           new_turb_mu_class<SpalartAllmarasSPGSMStabilization>
-            (physics_to_add, input);
+          (physics_to_add, spalart_allmaras, input);
       }
     else if( physics_to_add == scalar_ode )
       {
@@ -546,19 +676,19 @@ namespace GRINS
       {
 	physics_list[physics_to_add] =
           new_k_class<HeatTransfer>
-            (physics_to_add, input);
+          (physics_to_add, heat_transfer, input);
       }
     else if( physics_to_add == heat_transfer_adjoint_stab )
       {
 	physics_list[physics_to_add] =
           new_k_class<HeatTransferAdjointStabilization>
-            (physics_to_add, input);
+          (physics_to_add, heat_transfer, input);
       }
     else if( physics_to_add == heat_transfer_spgsm_stab )
       {
 	physics_list[physics_to_add] =
           new_k_class<HeatTransferSPGSMStabilization>
-            (physics_to_add, input);
+          (physics_to_add, heat_transfer, input);
       }
     else if( physics_to_add == heat_transfer_source )
       {
@@ -581,7 +711,7 @@ namespace GRINS
       {
 	physics_list[physics_to_add] =
           new_k_class<AxisymmetricHeatTransfer>
-            (physics_to_add, input);
+          (physics_to_add, axisymmetric_heat_transfer, input);
       }
     else if( physics_to_add == boussinesq_buoyancy )
       {
@@ -592,48 +722,48 @@ namespace GRINS
       {
         physics_list[physics_to_add] =
           new_mu_class<BoussinesqBuoyancyAdjointStabilization>
-            (physics_to_add, input);
+          (physics_to_add, boussinesq_buoyancy, input);
       }
     else if( physics_to_add == boussinesq_buoyancy_spgsm_stab )
       {
         physics_list[physics_to_add] =
           new_mu_class<BoussinesqBuoyancySPGSMStabilization>
-            (physics_to_add, input);
+          (physics_to_add, boussinesq_buoyancy, input);
       }
     else if( physics_to_add == axisymmetric_boussinesq_buoyancy)
       {
 	physics_list[physics_to_add] =
 	  PhysicsPtr(new AxisymmetricBoussinesqBuoyancy(physics_to_add,input));
       }
-    else if( physics_to_add == "HeatConduction" )
+    else if( physics_to_add == heat_conduction )
       {
 	physics_list[physics_to_add] =
           new_k_class<HeatConduction>
-            (physics_to_add, input);
+          (physics_to_add, heat_conduction, input);
       }
     else if(  physics_to_add == low_mach_navier_stokes )
       {
 	physics_list[physics_to_add] =
           new_mu_cp_k_class<LowMachNavierStokes>
-            (physics_to_add, input);
+          (physics_to_add, low_mach_navier_stokes, input);
       }
     else if(  physics_to_add == low_mach_navier_stokes_spgsm_stab )
       {
 	physics_list[physics_to_add] =
           new_mu_cp_k_class<LowMachNavierStokesSPGSMStabilization>
-            (physics_to_add, input);
+          (physics_to_add, low_mach_navier_stokes, input);
       }
     else if(  physics_to_add == low_mach_navier_stokes_vms_stab )
       {
 	physics_list[physics_to_add] =
           new_mu_cp_k_class<LowMachNavierStokesVMSStabilization>
-            (physics_to_add, input);
+            (physics_to_add, low_mach_navier_stokes, input);
       }
     else if(  physics_to_add == low_mach_navier_stokes_braack_stab )
       {
 	physics_list[physics_to_add] =
           new_mu_cp_k_class<LowMachNavierStokesBraackStabilization>
-            (physics_to_add, input);
+            (physics_to_add, low_mach_navier_stokes, input);
       }
     else if( physics_to_add == reacting_low_mach_navier_stokes )
       {
@@ -643,25 +773,9 @@ namespace GRINS
       }
     else if( physics_to_add == elastic_membrane )
       {
-        std::string elasticity_model = input("Physics/"+elastic_membrane+"/elasticity_model", "HookesLaw" );
-
-        if( elasticity_model == std::string("HookesLaw") )
-          {
-            physics_list[physics_to_add] =
-              PhysicsPtr(new ElasticMembrane<HookesLaw>(physics_to_add,input,false /*is_compressible*/));
-          }
-        else if( elasticity_model == std::string("MooneyRivlin") )
-          {
-            physics_list[physics_to_add] =
-              // \lambda determined from incompressiblity
-              PhysicsPtr(new ElasticMembrane<IncompressiblePlaneStressHyperelasticity<MooneyRivlin> >(physics_to_add,input,false /*is_compressible*/));
-          }
-        else
-          {
-            std::cerr << "Error: Invalid elasticity_model: " << elasticity_model << std::endl
-                      << "       Valid selections are: Hookean" << std::endl;
-            libmesh_error();
-          }
+        physics_list[physics_to_add] =
+          new_plane_stress_class<ElasticMembrane>
+          (physics_to_add, elastic_membrane, input);
       }
     else if( physics_to_add == elastic_membrane_constant_pressure )
       {
@@ -670,19 +784,9 @@ namespace GRINS
       }
     else if( physics_to_add == elastic_cable )
       {
-        std::string elasticity_model = input("Physics/"+elastic_cable+"/elasticity_model", "HookesLaw" );
-
-        if( elasticity_model == std::string("HookesLaw") )
-          {
-            physics_list[physics_to_add] =
-              PhysicsPtr(new ElasticCable<HookesLaw1D>(physics_to_add,input,false /*is_compressible*/));
-          }
-        else
-          {
-            std::cerr << "Error: Invalid elasticity_model: " << elasticity_model << std::endl
-                      << "       Valid selections are: Hookean" << std::endl;
-            libmesh_error();
-          }
+        physics_list[physics_to_add] =
+          new_one_d_stress_class<ElasticCable>
+          (physics_to_add, elastic_cable, input);
       }
     else if( physics_to_add == elastic_cable_constant_gravity )
       {

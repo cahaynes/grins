@@ -48,7 +48,7 @@ namespace GRINS
   {
   public:
 
-    LowMachNavierStokesBase(const PhysicsName& physics_name, const GetPot& input);
+    LowMachNavierStokesBase(const PhysicsName& physics_name, const std::string& core_physics_name, const GetPot& input);
 
     ~LowMachNavierStokesBase();
 
@@ -81,7 +81,7 @@ namespace GRINS
     // classes
     virtual void register_parameter
       ( const std::string & param_name,
-        libMesh::ParameterMultiPointer<libMesh::Number> & param_pointer )
+        libMesh::ParameterMultiAccessor<libMesh::Number> & param_pointer )
     const;
 
   protected:

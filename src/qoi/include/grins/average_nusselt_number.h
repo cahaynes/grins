@@ -52,11 +52,15 @@ namespace GRINS
     virtual void side_qoi_derivative( AssemblyContext& context,
                                       const unsigned int qoi_index );
 
-    virtual void init( const GetPot& input, const MultiphysicsSystem& system );
+    virtual void init( const GetPot& input,
+                       const MultiphysicsSystem& system,
+                       unsigned int qoi_num );
 
     virtual void init_context( AssemblyContext& context );
 
   protected:
+
+    void parse_thermal_conductivity( const GetPot& input );
 
     //! Thermal conductivity
     libMesh::Real _k;
